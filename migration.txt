@@ -1,0 +1,199 @@
+gsutil -m cp -r dir gs://my-bucket
+
+
+Compute Engine:
+•	Create an instance
+•	Name: e4m-base-server
+•	Boot Disk:  Ubuntu 16.04 LTS
+
+
+Connect SSH:
+Steps to Create a New Sudo User
+•	sudo adduser production
+•	Pass word : @techadmin123
+•	sudo usermod -aG sudo production
+•	su – production
+•	sudo command_to_run
+
+
+
+Install Apache Web Server 
+
+sudo apt update
+sudo apt install apache2
+sudo systemctl stop apache2.service
+sudo systemctl start apache2.service
+sudo systemctl enable apache2.service
+
+Install PHP 7.2
+apt-get update && apt-get upgrade
+apt-get install python-software-properties
+add-apt-repository ppa:ondrej/php
+apt-get update
+
+sudo apt-get install php7.2
+
+sudo apt-get install php-pear php7.2-curl php7.2-dev php7.2-gd php7.2-mbstring php7.2-zip php7.2-mysql php7.2-xml
+
+sudo a2enmod php7.2
+
+systemctl restart apache2
+
+sudo a2enmod rewrite
+
+Edit /etc/apache2/apache2.conf, changing the "AllowOverride" directive for the /var/www directory (which is my main document root): AllowOverride All
+Then restart the Apache server: 
+sudo service apache2 restart
+
+Installing Git for Linux
+
+sudo apt-get install git
+
+git config --global user.name "techadmine4m"
+git config --global user.email "techadmin@exchange4media.com"
+git config --list
+
+Installing Redis
+sudo apt-get update
+sudo apt-get install redis-server
+
+
+Installing the Cloud SQL Proxy:
+
+wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
+chmod +x cloud_sql_proxy
+
+Systemctl disable mysql
+
+Systemctl stop mysql
+
+Authenticate proxy to database with service account but before that you need to create service account as 
+"cloud-sql-proxy-key@production-server-185509.iam.gserviceaccount.com"
+
+1085223655627-compute@developer.gserviceaccount.com (service account name)
+
+Need to give below permission:-		
+Cloud SQL Client
+Editor
+Storage Admin
+Storage Object Admin
+
+
+
+
+INSTALL Supervisor (monitor the proxy process)
+sudo apt-get install supervisor
+service supervisor restart
+
+systemctl enable supervisor
+
+systemctl start supervisor
+
+systemctl status supervisor
+
+
+Path of supervisor config:
+/etc/supervisor/conf.d/
+cloudsqlproxy.conf
+
+program:cloudsqlproxy]
+directory=/root
+command=/root/./cloud_sql_proxy -instances=smiling-destiny-184908:asia-south1:uat-exchange4media=tcp:3306 -credenti
+al_file=key.json
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/cloudsqlproxy/cloudsqlproxy.err.log
+stdout_logfile=/var/log/cloudsqlproxy/cloudsqlproxy.out.log
+
+
+to check the running service
+sudo su
+supervisorctl
+ps -ef | grep proxy
+
+
+how to manually start the service
+start cloudsqlproxy
+
+
+If you want to run the website through Load Balance then edit this below file :
+etc/apache2/sites-available$ sudo vi ssl-exchnage4media.conf
+
+# only if site is under loadbalancer
+#start
+
+RewriteCond %{HTTP:X-Forwarded-Proto} 
+!https
+RewriteRule ^.*$ https://%{SERVER_NAME}%{REQUEST_URI}
+
+#end
+
+
+1. Create SnapShot (e4m--latest-05-10-2018)
+2. Create new instrance (e4m-website-snapshot)
+3. Copy all folder files to google cloud
+
+
+
+1. Copy all the extra_large_image from current server to files folder in new server	
+
+gsutil -m rsync -r . gs://news-photos
+
+
+
+
+/var/www/html/public/cms/cms_uploadfile   gs://news-photos/cms_uploadfile 
+
+/var/www/html/e4mcms/public/newsletterhtml  gs://news-photos/newsletterhtml
+
+ gsutil -m rsync -r gs://news-photos/cms_uploadfiles .
+
+Check Proxy : ps -ef | grep proxy
+Location /root : key.json
+
+Location of proxy conf : /etc/supervisor/conf.d
+cloudsqlproxy.conf 
+----------------
+
+[program:cloudsqlproxy]
+directory=/root
+command=/root/./cloud_sql_proxy -instances=production-server-185509:asia-south1:exchange4media-production=tcp:3306 -credential_file=key.json
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/cloudsqlproxy/cloudsqlproxy.err.log
+stdout_logfile=/var/log/cloudsqlproxy/cloudsqlproxy.out.log
+
+Run this command after any change in the above file.
+supervisorctl 
+update
+
+
+# only if site is under loadbalancer
+#start
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^.*$ https://%{SERVER_NAME}%{REQUEST_URI}
+#end
+ssl-exchange4media.com Vhost
+etc/apache2/sites-available$ sudo vi ssl-exchnage4media.conf
+
+
+Rolling Update : Its required when to push new changes in the base server. 
+
+1. Stop the base server 
+2. take a new image
+
+Name : e4m-website-base-Image-2
+Encryption : Google Manged Key
+Source : Disk (Compute Engine Name) (uat-exchange4media-site)
+
+3. Take copy of instance template
+
+Boot Disk : Custom Image (e4m-website-base-Image-2)
+
+4. in the instance group (Rolling Update)
+Choose new template.
+update mode : proactive
+
+
+VPC networks :
+exchange4media-vpc
